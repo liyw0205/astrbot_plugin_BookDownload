@@ -1,0 +1,6 @@
+name: astrbot_plugin_BookDownload
+display_name: 图书下载
+desc: AstrBot 图书下载插件基础仓库。
+version: v0.1.0
+author: AstrBot Community
+

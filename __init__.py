@@ -1,0 +1,2 @@
+"""AstrBot book download plugin."""
+
