@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 
 RESULT_MODES = {
     "图卡": "card",
@@ -10,6 +11,13 @@ RESULT_MODES = {
     "文字": "text",
     "text": "text",
 }
+
+
+NATURAL_BOOK_SEARCH_PATTERN = re.compile(
+    r"^(?:帮我\s*)?(?:搜(?:索|一下|下)?|找(?:一下|下)?|查(?:一下|下)?|来点|有没有)"
+    r"\s*(?P<query>.+?)(?:的)?(?:同人本|漫画本|本子)\s*[。.!！？?，,]*$",
+    re.IGNORECASE,
+)
 
 
 def normalize_result_mode(value: str, default: str = "card") -> str:
@@ -31,6 +39,14 @@ def parse_search_arguments(raw: str) -> tuple[str, int, str]:
     if parts and parts[-1].isdigit():
         page = int(parts.pop())
     return " ".join(parts).strip(), page, display_mode
+
+
+def parse_natural_book_search(raw: str) -> str:
+    """Extract a query from an explicit natural-language comic search request."""
+    match = NATURAL_BOOK_SEARCH_PATTERN.fullmatch(str(raw or "").strip())
+    if not match:
+        return ""
+    return re.sub(r"^[\s，,]+|[\s，,]+$", "", match.group("query"))
 
 
 def has_image_component(event) -> bool:

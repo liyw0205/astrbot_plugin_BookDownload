@@ -8,13 +8,18 @@ import aiohttp
 from aiohttp import web
 from PIL import Image
 
-from bookdownload.commands import normalize_result_mode, parse_search_arguments
+from bookdownload.commands import normalize_result_mode, parse_natural_book_search, parse_search_arguments
 from bookdownload.download import BookDownloadService, DownloadError
 from bookdownload.models import SearchResult
 from bookdownload.presentation import _cover_candidates, _fetch_cover, _font, render_result_card
 
 
 class CommandParsingTests(unittest.TestCase):
+    def test_natural_book_search_query(self):
+        self.assertEqual(parse_natural_book_search("搜一下碧蓝航线的本子"), "碧蓝航线")
+        self.assertEqual(parse_natural_book_search("帮我找 某作品的同人本。"), "某作品")
+        self.assertEqual(parse_natural_book_search("介绍一下碧蓝航线"), "")
+
     def test_result_modes(self):
         self.assertEqual(normalize_result_mode("图卡"), "card")
         self.assertEqual(normalize_result_mode("图文"), "image_text")

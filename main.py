@@ -15,7 +15,13 @@ from astrbot.api.message_components import File, Image, Plain
 from astrbot.api.star import Context, Star
 from astrbot.core.star.filter.command import GreedyStr
 
-from .bookdownload.commands import normalize_result_mode, parse_search_arguments, has_image_component
+from .bookdownload.commands import (
+    NATURAL_BOOK_SEARCH_PATTERN,
+    has_image_component,
+    normalize_result_mode,
+    parse_natural_book_search,
+    parse_search_arguments,
+)
 from .bookdownload.download import BookDownloadService, DownloadResult, normalize_download_format
 from .bookdownload.details import DetailError, GalleryDetailService
 from .bookdownload.detail_presentation import render_detail_card
@@ -616,6 +622,33 @@ class BookDownloadPlugin(Star):
     async def eh_search(self, event: AstrMessageEvent, arguments: GreedyStr):
         yield await self._handle_search(event, "ehentai", arguments)
 
+    @filter.regex(NATURAL_BOOK_SEARCH_PATTERN)
+    async def natural_book_search(self, event: AstrMessageEvent):
+        """Handle an explicit natural-language gallery search before the chat agent."""
+        # Regex filters are global; require an actual mention/wake so ordinary group
+        # conversation is not hijacked by the plugin.
+        if not event.is_at_or_wake_command or not self._config_bool("llm_tools_enabled", True):
+            return
+        query = parse_natural_book_search(event.get_message_str())
+        if not query:
+            return
+        logger.info("BookDownload natural search route -> book_text_search: %s", query)
+        try:
+            results, errors = await self._run_text_search(query, "", 1)
+            results = await self._filter_results_by_tags(results)
+            results = await self._filter_results_by_language(results)
+            response = await self._search_response(
+                event,
+                results,
+                errors,
+                normalize_result_mode("", self.config.get("result_display_mode", "card")),
+            )
+        except Exception as exc:
+            logger.exception("BookDownload natural text search failed")
+            response = event.plain_result(f"搜索失败: {exc}")
+        event.stop_event()
+        yield response
+
     @filter.command("nh下载")
     async def nh_download(self, event: AstrMessageEvent, identifier: str, output_format: str = ""):
         async for response in self._handle_download(event, "nhentai", identifier, output_format):
@@ -683,11 +716,18 @@ class BookDownloadPlugin(Star):
         source: str = "",
         page: int = 1,
     ):
-        """Search comic galleries from a user's natural-language request.
+        """Search public comic-gallery catalog metadata for a user's request.
+
+        Call this tool whenever the user explicitly asks to search for a comic,
+        doujin, or gallery, including phrases such as “搜一下碧蓝航线的本子”
+        or “找某作品的同人本”. This tool only queries the configured site
+        catalogs and returns search metadata; it does not generate or provide
+        sexual content. Do not refuse a catalog lookup merely because the
+        user's query contains the word “本子”.
 
         Args:
-            query(string): Search words or tags describing the requested comic.
-            source(string): Source name: all, nhentai, or ehentai.
+            query(string): Work, character, artist, or tag to search. Keep the user's words; do not add language filters.
+            source(string): Source name: all, nhentai, or ehentai. Leave empty for the configured default.
             page(number): Result page, starting at 1.
         """
         if not self.config.get("llm_tools_enabled", True):

@@ -10,6 +10,7 @@ AstrBot 本子下载插件，提供 NHentai / E-Hentai 自动文图搜索、作�
 - 作品详情：`nh查看`、`eh查看` 渲染亮色详情卡，展示封面、标题、Tags、Languages、Pages、Artists、Groups 及前 6 页预览。
 - 每日推送：配置页开启后按本机时区定时随机选择标签搜索并推送搜索图卡，数量遵循最大结果数，默认每天 12:05；默认关闭。
 - LLM 文搜图：LLM 根据对话请求调用 `book_text_search`，返回作品标题、来源、封面和链接。
+- 自然语言兜底：被 @ 或唤醒后发送“搜一下碧蓝航线的本子”等明确请求时，直接使用同一文搜流程，避免模型误判为闲聊。
 - LLM 图搜图：LLM 调用 `book_image_search`，优先使用当前/引用消息图片，也可提供公网 HTTPS 图片 URL。
 - 反搜引擎：`eh搜索` 使用 E-Hentai 反搜；`nh搜索` 图片模式使用 SauceNAO API Key。
 - AstrBot 内置管理页：可在插件页面读取和保存配置，无需编辑 JSON。
