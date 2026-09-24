@@ -1,2 +1,150 @@
-{}
-
+{
+  "default_text_source": {
+    "description": "文搜默认来源",
+    "type": "string",
+    "default": "all",
+    "options": ["all", "nhentai", "ehentai"],
+    "hint": "LLM 文搜工具未指定来源时使用；命令搜索由 nh搜索 / eh搜索 指定。"
+  },
+  "result_display_mode": {
+    "description": "搜索结果默认展示方式",
+    "type": "string",
+    "default": "card",
+    "options": ["card", "image_text", "text"],
+    "hint": "图卡将结果排版渲染为一张图片；图文发送文字和封面图；文字只发文字。"
+  },
+  "reverse_engine": {
+    "description": "默认图片反搜引擎",
+    "type": "string",
+    "default": "ehentai",
+    "options": ["ehentai", "saucenao"],
+    "hint": "E-Hentai 默认；SauceNAO 需配置 API Key，且会上传图片到该服务。"
+  },
+  "saucenao_api_key": {
+    "description": "SauceNAO API Key",
+    "type": "string",
+    "default": "",
+    "hint": "NH 图片搜索会使用此 Key；SauceNAO 会收到上传的图片。"
+  },
+  "ehentai_site": {
+    "description": "E-Hentai 站点",
+    "type": "string",
+    "default": "e-hentai",
+    "options": ["e-hentai", "exhentai"],
+    "hint": "使用 exhentai 通常还需要有效的 Cookie。"
+  },
+  "ehentai_cookie": {
+    "description": "E-Hentai Cookie",
+    "type": "string",
+    "default": "",
+    "hint": "可选。配置敏感信息，请勿公开分享或提交到代码仓库。"
+  },
+  "proxy_url": {
+    "description": "网络代理",
+    "type": "string",
+    "default": "",
+    "hint": "支持 http://、https://、socks5://、socks5h://；留空使用直连。"
+  },
+  "timeout": {
+    "description": "网络请求超时（秒）",
+    "type": "int",
+    "default": 30,
+    "hint": "有效范围 5-120 秒。"
+  },
+  "max_results": {
+    "description": "最大搜索结果数",
+    "type": "int",
+    "default": 6,
+    "hint": "有效范围 1-12。"
+  },
+  "max_image_mb": {
+    "description": "反搜图片大小上限（MB）",
+    "type": "int",
+    "default": 8,
+    "hint": "有效范围 1-20 MB。"
+  },
+  "download_format": {
+    "description": "默认下载发送方式",
+    "type": "string",
+    "default": "archive",
+    "options": ["pdf", "archive", "images", "long_image"],
+    "hint": "分别对应 PDF、压缩包、图片、长图。"
+  },
+  "download_max_pages": {
+    "description": "单次下载最大页数",
+    "type": "int",
+    "default": 100,
+    "hint": "有效范围 1-300，避免单次下载过大。"
+  },
+  "download_max_mb": {
+    "description": "单次下载大小上限（MB）",
+    "type": "int",
+    "default": 200,
+    "hint": "有效范围 10-1000。"
+  },
+  "llm_tools_enabled": {
+    "description": "启用 LLM 搜索工具",
+    "type": "bool",
+    "default": true
+  },
+  "daily_push_enabled": {
+    "description": "启用每日推送",
+    "type": "bool",
+    "default": false,
+    "hint": "关闭时不会创建定时任务。"
+  },
+  "daily_push_time": {
+    "description": "每日推送时间",
+    "type": "string",
+    "default": "12:05",
+    "hint": "本机时区的 HH:MM，例如 12:05。"
+  },
+  "daily_push_source": {
+    "description": "每日推送来源",
+    "type": "string",
+    "default": "nhentai",
+    "options": ["nhentai", "ehentai", "all"]
+  },
+  "daily_push_tag_regex": {
+    "description": "每日推送标签正则",
+    "type": "string",
+    "default": "blowjob|stockings|masturbation|lolicon",
+    "hint": "用 | 分隔候选标签，每天随机选择一个；也会校验为有效正则。"
+  },
+  "daily_push_language": {
+    "description": "每日推送语言筛选",
+    "type": "string",
+    "default": "chinese",
+    "hint": "匹配详情中的 Languages，例如 chinese；开启全局筛选后也用于普通搜索。"
+  },
+  "language_filter_enabled": {
+    "description": "启用全局 Languages 筛选",
+    "type": "bool",
+    "default": false,
+    "hint": "打开后 nh搜索、eh搜索、LLM 搜索和反向搜图都会校验详情 Languages。"
+  },
+  "daily_push_group_ids": {
+    "description": "每日推送群号",
+    "type": "string",
+    "default": "",
+    "hint": "只填写数字，多个群号用 | 分隔，例如 123456|654321。"
+  },
+  "daily_push_friend_ids": {
+    "description": "每日推送私聊/Q号",
+    "type": "string",
+    "default": "",
+    "hint": "只填写 QQ 号，多个号码用 | 分隔，例如 123456|654321。"
+  },
+  "daily_push_platform": {
+    "description": "每日推送平台标识",
+    "type": "string",
+    "default": "aiocqhttp",
+    "hint": "QQ OneBot 通常为 aiocqhttp，一般无需修改。"
+  },
+  "daily_push_target": {
+    "description": "旧版每日推送目标会话（兼容）",
+    "type": "string",
+    "default": "",
+    "hint": "兼容旧配置；新配置请使用群号和私聊/Q号字段。"
+  }
+}

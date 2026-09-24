@@ -1,6 +1,14 @@
 name: astrbot_plugin_BookDownload
-display_name: 图书下载
-desc: AstrBot 图书下载插件基础仓库。
-version: v0.1.0
+display_name: 本子下载
+desc: NHentai / E-Hentai 文图搜索、作品下载、详情卡、每日推送与 LLM 搜索工具。
+version: v0.6.0
 author: AstrBot Community
-
+repo: https://github.com/liyw0205/astrbot_plugin_BookDownload
+astrbot_version: ">=4.13.0,<5"
+tags:
+  - 搜索
+  - 漫画
+  - 反向搜图
+  - dashboard
+pages:
+  - name: dashboard

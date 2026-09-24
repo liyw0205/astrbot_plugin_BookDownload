@@ -1,0 +1,10 @@
+{
+  "title": {
+    "zh-CN": "本子下载配置",
+    "en-US": "BookDownload Settings"
+  },
+  "description": {
+    "zh-CN": "在 AstrBot 内置页面管理本子搜索源、反搜引擎、下载格式和代理。",
+    "en-US": "Manage search sources, reverse-search engines, download formats and proxy settings inside AstrBot."
+  }
+}

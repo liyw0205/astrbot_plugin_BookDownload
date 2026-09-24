@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>本子下载配置</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 24px; background: #f5f6f8; color: #1d2329; }
+    main { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    .muted { color: #68737d; margin: 0 0 20px; }
+    form { display: grid; gap: 16px; }
+    fieldset { border: 1px solid #d8dde3; border-radius: 8px; background: #fff; padding: 18px; }
+    legend { padding: 0 6px; font-weight: 700; }
+    label { display: grid; gap: 6px; margin-top: 12px; font-size: 14px; }
+    input, select { box-sizing: border-box; width: 100%; padding: 9px 10px; border: 1px solid #b9c2ca; border-radius: 5px; background: inherit; color: inherit; }
+    .hint { font-size: 12px; color: #68737d; }
+    .actions { display: flex; gap: 10px; align-items: center; }
+    button { border: 0; border-radius: 5px; padding: 10px 16px; cursor: pointer; background: #2563eb; color: white; font-weight: 600; }
+    button.secondary { background: #6b7280; }
+    #status { min-height: 20px; font-size: 13px; }
+    #status.error { color: #b42318; }
+    #status.ok { color: #087443; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #17191c; color: #f3f4f6; }
+      fieldset { background: #202328; border-color: #3b424b; }
+      input, select { border-color: #59636e; }
+      .muted, .hint { color: #aab4bf; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>本子下载配置</h1>
+    <p class="muted">配置会应用到 NHentai/E-Hentai 搜索、下载指令和两个 LLM 搜索工具。</p>
+  <form id="configForm">
+    <fieldset>
+      <legend>搜索与反搜</legend>
+      <label>文搜默认来源
+        <select name="default_text_source"><option value="all">全部来源</option><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option></select>
+        <span class="hint">用于 LLM 文搜工具；命令搜索由 nh搜索 / eh搜索 指定。</span>
+      </label>
+      <label>搜索结果默认展示方式
+        <select name="result_display_mode"><option value="card">图卡</option><option value="image_text">图文</option><option value="text">文字</option></select>
+        <span class="hint">图卡将结果、封面和标题排版为一张图片；图文只发送封面图片，不发送封面链接。</span>
+      </label>
+      <label>默认反搜引擎
+        <select name="reverse_engine"><option value="ehentai">E-Hentai</option><option value="saucenao">SauceNAO</option></select>
+      </label>
+      <label>SauceNAO API Key
+        <input name="saucenao_api_key" type="password" autocomplete="off">
+        <span class="hint">NH 图片搜索需要配置；留空或保持掩码表示不修改已有 Key。</span>
+      </label>
+      <label>E-Hentai 站点
+        <select name="ehentai_site"><option value="e-hentai">E-Hentai</option><option value="exhentai">ExHentai</option></select>
+      </label>
+      <label>E-Hentai Cookie
+        <input name="ehentai_cookie" type="password" autocomplete="off">
+        <span class="hint">留空或保持掩码表示不修改已有 Cookie。</span>
+      </label>
+    </fieldset>
+    <fieldset>
+      <legend>网络代理</legend>
+      <label>代理地址
+        <input name="proxy_url" type="text" placeholder="socks5h://127.0.0.1:1080">
+        <span class="hint">支持 http://、https://、socks5://、socks5h://，可包含用户名和密码。</span>
+      </label>
+      <label>请求超时（秒）<input name="timeout" type="number" min="5" max="120"></label>
+    </fieldset>
+    <fieldset>
+      <legend>输出限制</legend>
+      <label>最大结果数 <input name="max_results" type="number" min="1" max="12"></label>
+      <label>图片大小上限（MB） <input name="max_image_mb" type="number" min="1" max="20"></label>
+      <label>默认下载发送方式
+        <select name="download_format"><option value="pdf">PDF</option><option value="archive">压缩包</option><option value="images">图片</option><option value="long_image">长图（每 10 张）</option></select>
+      </label>
+      <label>下载最大页数 <input name="download_max_pages" type="number" min="1" max="300"></label>
+      <label>下载大小上限（MB） <input name="download_max_mb" type="number" min="10" max="1000"></label>
+      <label><span>启用 LLM 搜索工具</span><input name="llm_tools_enabled" type="checkbox"></label>
+    </fieldset>
+    <fieldset>
+      <legend>每日推送</legend>
+      <label><span>启用每日推送</span><input name="daily_push_enabled" type="checkbox"></label>
+      <label>推送时间
+        <input name="daily_push_time" type="time">
+        <span class="hint">本机时区，每天一次；默认 12:05。</span>
+      </label>
+      <label>推送来源
+        <select name="daily_push_source"><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option><option value="all">全部来源</option></select>
+      </label>
+      <label>标签正则
+        <input name="daily_push_tag_regex" type="text" placeholder="blowjob|stockings|masturbation|lolicon">
+        <span class="hint">用 | 分隔候选标签，每天随机选择一个。</span>
+      </label>
+      <label>Languages 筛选
+        <input name="daily_push_language" type="text" placeholder="chinese">
+        <span class="hint">匹配详情页 Languages 标签，支持正则；每日推送和全局搜索筛选共用此值。</span>
+      </label>
+      <label><span>启用全局 Languages 筛选</span><input name="language_filter_enabled" type="checkbox">
+        <span class="hint">打开后普通搜索、LLM 搜索和反向搜图也会先校验 Languages。</span>
+      </label>
+      <label>推送群号
+        <input name="daily_push_group_ids" type="text" placeholder="123456|654321">
+        <span class="hint">只填写数字，多个群号用 | 分隔。</span>
+      </label>
+      <label>推送私聊/Q号
+        <input name="daily_push_friend_ids" type="text" placeholder="123456|654321">
+        <span class="hint">只填写 QQ 号，多个号码用 | 分隔。</span>
+      </label>
+      <label>推送平台标识
+        <input name="daily_push_platform" type="text" value="aiocqhttp" placeholder="aiocqhttp">
+        <span class="hint">QQ OneBot 通常保持 aiocqhttp；未填写时默认使用 aiocqhttp。</span>
+      </label>
+    </fieldset>
+    <div class="actions"><button type="submit">保存配置</button><button type="button" class="secondary" id="reload">重新读取</button><span id="status"></span></div>
+  </form>
+</main>
+<script src="/api/plugin/page/bridge-sdk.js"></script>
+<script>
+  const form = document.getElementById('configForm');
+  const status = document.getElementById('status');
+  const bridge = () => window.AstrBotPluginPage || null;
+  function endpoint(path) { return String(path).replace(/^\/api\//, ''); }
+  async function api(path, method = 'GET', body = {}) {
+    const b = bridge();
+    if (b) {
+      if (typeof b.ready === 'function') await b.ready();
+      const raw = method === 'GET' ? await b.apiGet(endpoint(path), {}) : await b.apiPost(endpoint(path), body);
+      const outer = raw && raw.data && raw.data.success !== undefined ? raw.data : raw;
+      if (outer && outer.success === false) throw new Error(outer.error || outer.message || '请求失败');
+      return outer && outer.data !== undefined ? outer.data : outer;
+    }
+    const response = await fetch(path, { method, headers: {'Content-Type': 'application/json'}, body: method === 'GET' ? undefined : JSON.stringify(body) });
+    const data = await response.json();
+    if (!response.ok || data.success === false) throw new Error(data.error || '请求失败');
+    return data.data;
+  }
+  function setStatus(message, kind = '') { status.textContent = message; status.className = kind; }
+  function fill(config) {
+    for (const element of form.elements) {
+      if (!element.name || config[element.name] === undefined) continue;
+      if (element.type === 'checkbox') element.checked = Boolean(config[element.name]);
+      else element.value = config[element.name] ?? '';
+    }
+  }
+  function collect() {
+    const config = {};
+    for (const element of form.elements) {
+      if (!element.name) continue;
+      config[element.name] = element.type === 'checkbox' ? element.checked : element.value;
+    }
+    for (const name of ['timeout', 'max_results', 'max_image_mb', 'download_max_pages', 'download_max_mb']) config[name] = Number(config[name]);
+    return config;
+  }
+  async function load() { try { fill(await api('/api/config')); setStatus('已读取', 'ok'); } catch (error) { setStatus(error.message, 'error'); } }
+  form.addEventListener('submit', async event => { event.preventDefault(); try { fill(await api('/api/config', 'POST', {config: collect()})); setStatus('已保存', 'ok'); } catch (error) { setStatus(error.message, 'error'); } });
+  document.getElementById('reload').addEventListener('click', load);
+  load();
+</script>
+</body>
+</html>
