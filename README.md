@@ -1,8 +1,12 @@
-# 本子搜索下载（astrbot_plugin_BookDownload）
+# 本子搜索下载
 
-AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai 自动文图搜索、作品下载与对应的 LLM 工具。
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/liyw0205/astrbot_plugin_BookDownload@main/logo.png" width="160" alt="本子搜索下载图标">
+</p>
 
-## 功能
+AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai 的文字搜索、图片反搜、作品下载、详情卡、定时推送与 LLM 工具。
+
+## 功能概览
 
 - NHentai/E-Hentai 搜索：`nh搜索`、`eh搜索` 自动判断文字关键词或消息/引用图片。
 - 搜索结果：支持将封面和作品信息渲染为亮色图卡、图文发送或纯文字发送；中文字体随插件提供。
@@ -30,9 +34,9 @@ AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai 自动文图搜索�
 /今日本子
 ```
 
-搜索指令根据消息或引用中是否有图片自动选择反向搜图或文字搜索。NHentai 图片搜索使用 SauceNAO（需要配置 API Key），E-Hentai 图片搜索使用 E-Hentai 反搜。群聊下载图片/长图会私发给发起者。
+搜索指令根据消息或引用中是否有图片自动选择反向搜图或文字搜索。自然语言搜索需要在群聊中 @机器人或使用唤醒前缀，例如“搜一下碧蓝航线的本子”。NHentai 图片搜索使用 SauceNAO（需要配置 API Key），E-Hentai 图片搜索使用 E-Hentai 反搜。群聊下载图片/长图会私发给发起者。
 
-## 配置
+## 配置项
 
 在 AstrBot WebUI 插件配置中设置：
 
@@ -62,8 +66,8 @@ AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai 自动文图搜索�
 - `今日本子`: 立即触发一次推送，只发送到当前触发指令的会话；即使每日推送开关关闭也可以手动触发，不读取定时推送目标配置。
 - `daily_push_target`: 旧版完整会话配置，仅用于兼容已有配置。
 
-## 隐私与运行要求
+## 注意事项
 
 反向搜索会将图片发给对应搜索服务：`nh搜索` 使用 SauceNAO，`eh搜索` 使用 E-Hentai；LLM 图片工具使用 `reverse_engine` 选择的服务。LLM 图片 URL 参数仅接受公网 HTTPS 地址，不接受本地路径或内网地址。NHentai / E-Hentai 搜索结果面向成人用户，请仅在适当的 18+ 会话中启用。
 
-插件依赖 `aiohttp`、`aiohttp-socks`、`beautifulsoup4` 和 `Pillow`，由 AstrBot 插件依赖管理安装。安装后可从 AstrBot 插件管理页打开 `本子搜索下载配置` 页面；页面保存配置会立即更新当前进程。
+插件依赖 `aiohttp`、`aiohttp-socks`、`beautifulsoup4` 和 `Pillow`，由 AstrBot 插件依赖管理安装。安装后可从 AstrBot 插件管理页打开 `本子搜索下载配置` 页面，保存后配置会立即生效。
