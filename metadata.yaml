@@ -1,5 +1,5 @@
 name: astrbot_plugin_BookDownload
-display_name: 本子下载
+display_name: 本子搜索下载
 desc: NHentai / E-Hentai 文图搜索、作品下载、详情卡、每日推送与 LLM 搜索工具。
 version: v0.6.0
 author: AstrBot Community

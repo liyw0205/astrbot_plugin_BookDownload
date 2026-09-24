@@ -1,6 +1,6 @@
-# 本子下载（astrbot_plugin_BookDownload）
+# 本子搜索下载（astrbot_plugin_BookDownload）
 
-AstrBot 本子下载插件，提供 NHentai / E-Hentai 自动文图搜索、作品下载与对应的 LLM 工具。
+AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai 自动文图搜索、作品下载与对应的 LLM 工具。
 
 ## 功能
 
@@ -66,4 +66,4 @@ AstrBot 本子下载插件，提供 NHentai / E-Hentai 自动文图搜索、作�
 
 反向搜索会将图片发给对应搜索服务：`nh搜索` 使用 SauceNAO，`eh搜索` 使用 E-Hentai；LLM 图片工具使用 `reverse_engine` 选择的服务。LLM 图片 URL 参数仅接受公网 HTTPS 地址，不接受本地路径或内网地址。NHentai / E-Hentai 搜索结果面向成人用户，请仅在适当的 18+ 会话中启用。
 
-插件依赖 `aiohttp`、`aiohttp-socks`、`beautifulsoup4` 和 `Pillow`，由 AstrBot 插件依赖管理安装。安装后可从 AstrBot 插件管理页打开 `本子下载配置` 页面；页面保存配置会立即更新当前进程。
+插件依赖 `aiohttp`、`aiohttp-socks`、`beautifulsoup4` 和 `Pillow`，由 AstrBot 插件依赖管理安装。安装后可从 AstrBot 插件管理页打开 `本子搜索下载配置` 页面；页面保存配置会立即更新当前进程。

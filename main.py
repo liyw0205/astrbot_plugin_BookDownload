@@ -37,7 +37,7 @@ MASKED_VALUE = "********"
 DEFAULT_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|lolicon"
 LEGACY_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|masturbation|lolicon"
 DEFAULT_TAG_FILTER_REGEX = "yaoi|tomgirl|futanari|guro|scat|vore|bestiality"
-HELP_TEXT = """本子下载指令
+HELP_TEXT = """本子搜索下载指令
 
 搜索（自动识别文字或消息/引用图片）：
   /nh搜索 <关键词|附图> [页码] [图卡|图文|文字]
@@ -68,7 +68,7 @@ HELP_TEXT = """本子下载指令
   立即触发一次推送（每日推送开关关闭时也可手动触发），数量遵循最大结果数。
 
 LLM 工具：book_text_search、book_image_search
-配置：插件详情的“本子下载配置”页面。"""
+配置：插件详情的“本子搜索下载配置”页面。"""
 
 
 def _today_push_success_text(result_count: int) -> str:
