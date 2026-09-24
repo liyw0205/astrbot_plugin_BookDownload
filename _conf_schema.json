@@ -57,6 +57,18 @@
     "default": 6,
     "hint": "有效范围 1-12。"
   },
+  "tag_filter_enabled": {
+    "description": "启用标签正则过滤",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后，搜索、每日推送和今日本子都会排除命中标签正则的作品。"
+  },
+  "tag_filter_regex": {
+    "description": "标签排除正则",
+    "type": "string",
+    "default": "yaoi|tomgirl|futanari|guro|scat|vore|bestiality",
+    "hint": "命中作品 Tags 即排除；支持正则，默认排除 yaoi、tomgirl、futanari、guro、scat、vore、bestiality。"
+  },
   "max_image_mb": {
     "description": "反搜图片大小上限（MB）",
     "type": "int",
@@ -108,7 +120,7 @@
   "daily_push_tag_regex": {
     "description": "每日推送标签正则",
     "type": "string",
-    "default": "blowjob|stockings|masturbation|lolicon",
+    "default": "blowjob|stockings|lolicon",
     "hint": "用 | 分隔候选标签，每天随机选择一个；也会校验为有效正则。"
   },
   "daily_push_language": {

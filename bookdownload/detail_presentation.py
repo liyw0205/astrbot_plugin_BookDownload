@@ -94,13 +94,13 @@ async def render_detail_card(detail: GalleryDetail, *, proxy: str | None, timeou
         referer = detail.url
         cover, *pages = await asyncio.gather(
             _fetch_image(session, request_proxy, detail.cover_url, referer),
-            *(_fetch_image(session, request_proxy, page_url, referer) for page_url in detail.page_urls[:4]),
+            *(_fetch_image(session, request_proxy, page_url, referer) for page_url in detail.page_urls[:6]),
         )
 
     width, top_height = 820, 450
     padding, gap = 24, 12
     preview_width, preview_height = 300, 410
-    section_height = 38 + preview_height * 2 + gap
+    section_height = 38 + preview_height * 3 + gap * 2
     height = top_height + section_height + padding * 2 + 18
     canvas = Image.new("RGB", (width, height), "#f4f7f5")
     draw = ImageDraw.Draw(canvas)
@@ -136,10 +136,10 @@ async def render_detail_card(detail: GalleryDetail, *, proxy: str | None, timeou
     _draw_labeled_text(draw, info_x, y, "Groups", ", ".join(detail.groups), label_font, body_font, info_width, 2)
 
     section_y = top_height + padding
-    draw.text((padding, section_y), "前 4 页预览", font=section_font, fill="#29443a")
+    draw.text((padding, section_y), "前 6 页预览", font=section_font, fill="#29443a")
     grid_top = section_y + 38
     grid_left = (width - preview_width * 2 - gap) // 2
-    for index in range(4):
+    for index in range(6):
         row, col = divmod(index, 2)
         left = grid_left + col * (preview_width + gap)
         top = grid_top + row * (preview_height + gap)

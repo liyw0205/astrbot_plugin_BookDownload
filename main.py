@@ -7,6 +7,7 @@ import datetime as dt
 import random
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, filter
@@ -27,6 +28,9 @@ from .webui.dashboard_api import BookDownloadDashboardAPI
 
 
 MASKED_VALUE = "********"
+DEFAULT_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|lolicon"
+LEGACY_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|masturbation|lolicon"
+DEFAULT_TAG_FILTER_REGEX = "yaoi|tomgirl|futanari|guro|scat|vore|bestiality"
 HELP_TEXT = """本子下载指令
 
 搜索（自动识别文字或消息/引用图片）：
@@ -49,7 +53,7 @@ HELP_TEXT = """本子下载指令
   /eh查看 <作品ID或完整链接>
   示例：/nh查看 683646
   示例：/eh查看 https://e-hentai.org/g/4209794/7e5062ea61/
-  详情卡包含封面、标题、Tags、Languages、Pages、Artists、Groups 和前 4 页预览。
+  详情卡包含封面、标题、Tags、Languages、Pages、Artists、Groups 和前 6 页预览。
 
 每日推送：
   在配置页打开每日推送开关，默认每天 12:05。
@@ -86,9 +90,13 @@ class BookDownloadPlugin(Star):
         self.config.setdefault("daily_push_enabled", False)
         self.config.setdefault("daily_push_time", "12:05")
         self.config.setdefault("daily_push_source", "nhentai")
-        self.config.setdefault("daily_push_tag_regex", "blowjob|stockings|masturbation|lolicon")
+        if str(self.config.get("daily_push_tag_regex", "")).strip().lower() == LEGACY_DAILY_PUSH_TAG_REGEX:
+            self.config["daily_push_tag_regex"] = DEFAULT_DAILY_PUSH_TAG_REGEX
+        self.config.setdefault("daily_push_tag_regex", DEFAULT_DAILY_PUSH_TAG_REGEX)
         self.config.setdefault("daily_push_language", "chinese")
         self.config.setdefault("language_filter_enabled", False)
+        self.config.setdefault("tag_filter_enabled", True)
+        self.config.setdefault("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)
         self.config.setdefault("daily_push_group_ids", "")
         self.config.setdefault("daily_push_friend_ids", "")
         self.config.setdefault("daily_push_platform", "aiocqhttp")
@@ -133,6 +141,8 @@ class BookDownloadPlugin(Star):
             "daily_push_tag_regex",
             "daily_push_language",
             "language_filter_enabled",
+            "tag_filter_enabled",
+            "tag_filter_regex",
             "daily_push_group_ids",
             "daily_push_friend_ids",
             "daily_push_platform",
@@ -175,6 +185,12 @@ class BookDownloadPlugin(Star):
                 re.compile(language, re.IGNORECASE)
             except re.error as exc:
                 raise ValueError(f"daily_push_language 不是有效正则: {exc}") from exc
+        tag_filter_regex = str(next_config.get("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)).strip()
+        if tag_filter_regex:
+            try:
+                re.compile(tag_filter_regex, re.IGNORECASE)
+            except re.error as exc:
+                raise ValueError(f"tag_filter_regex 不是有效正则: {exc}") from exc
         if str(next_config.get("daily_push_target", "")).strip() and len(str(next_config["daily_push_target"])) > 300:
             raise ValueError("daily_push_target 过长。")
         for key in ("daily_push_group_ids", "daily_push_friend_ids"):
@@ -328,6 +344,7 @@ class BookDownloadPlugin(Star):
         source = str(self.config.get("daily_push_source", "nhentai")).strip().lower()
         selected_results: list[SearchResult] = []
         seen_urls: set[str] = set()
+        detail_cache: dict[str, Any] = {}
         desired_count = self.service.max_results
         for page in range(1, 6):
             results, errors = await self.service.search_text(query, source=source, page=page)
@@ -335,6 +352,7 @@ class BookDownloadPlugin(Star):
                 if page == 1:
                     logger.warning("每日推送搜索无结果: %s; %s", query, errors)
                 break
+            results = await self._filter_results_by_tags(results, detail_cache)
             random.shuffle(results)
             for result in results:
                 if result.url in seen_urls:
@@ -342,7 +360,14 @@ class BookDownloadPlugin(Star):
                 seen_urls.add(result.url)
                 if language:
                     try:
-                        candidate = await self.detail_service.fetch(result.url, source_hint=result.source)
+                        candidate = detail_cache.get(result.url)
+                        if candidate is None or candidate is False:
+                            candidate = await self.detail_service.fetch(
+                                result.url,
+                                source_hint=result.source,
+                                include_previews=False,
+                            )
+                            detail_cache[result.url] = candidate
                         if not re.search(language, " ".join(candidate.languages), re.IGNORECASE):
                             continue
                     except Exception as exc:
@@ -428,11 +453,13 @@ class BookDownloadPlugin(Star):
                 )
                 engine = "saucenao" if source == "nhentai" else "ehentai"
                 results = await self.service.search_image(image, engine=engine)
+                results = await self._filter_results_by_tags(results)
                 results = await self._filter_results_by_language(results)
                 return await self._search_response(event, results, [], mode)
             if not query:
                 return event.plain_result("请提供搜索关键词，或附图/回复图片后使用搜索指令。")
             results, errors = await self._run_text_search(query, source, page)
+            results = await self._filter_results_by_tags(results)
             results = await self._filter_results_by_language(results)
             return await self._search_response(event, results, errors, mode)
         except Exception as exc:
@@ -450,12 +477,59 @@ class BookDownloadPlugin(Star):
         for result in results:
             try:
                 hint = result.source if result.source in {"nhentai", "ehentai"} else ""
-                detail = await self.detail_service.fetch(result.url, source_hint=hint)
+                detail = await self.detail_service.fetch(result.url, source_hint=hint, include_previews=False)
             except Exception as exc:
                 logger.debug("Language filter detail request failed for %s: %s", result.url, exc)
                 continue
             if re.search(pattern, " ".join(detail.languages), re.IGNORECASE):
                 filtered.append(result)
+        return filtered
+
+    async def _filter_results_by_tags(
+        self,
+        results: list[SearchResult],
+        detail_cache: dict[str, Any] | None = None,
+    ) -> list[SearchResult]:
+        """Exclude galleries whose tags match the configured regular expression."""
+        if not self._config_bool("tag_filter_enabled", True):
+            return results
+        pattern_text = str(self.config.get("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)).strip()
+        if not pattern_text:
+            return results
+        try:
+            pattern = re.compile(pattern_text, re.IGNORECASE)
+        except re.error as exc:
+            logger.warning("标签过滤正则无效，跳过过滤: %s", exc)
+            return results
+
+        cache = detail_cache if detail_cache is not None else {}
+        filtered: list[SearchResult] = []
+        for result in results:
+            tags = result.tags
+            source_hint = result.source if result.source in {"nhentai", "ehentai"} else ""
+            if not source_hint:
+                hostname = (urlparse(result.url).hostname or "").lower()
+                if hostname == "nhentai.net":
+                    source_hint = "nhentai"
+                elif hostname in {"e-hentai.org", "exhentai.org"}:
+                    source_hint = "ehentai"
+            if not tags and source_hint:
+                if result.url not in cache:
+                    try:
+                        cache[result.url] = await self.detail_service.fetch(
+                            result.url,
+                            source_hint=source_hint,
+                            include_previews=False,
+                        )
+                    except Exception as exc:
+                        logger.debug("Tag filter detail request failed for %s: %s", result.url, exc)
+                        cache[result.url] = False
+                detail = cache[result.url]
+                if detail is not False:
+                    tags = detail.tags
+            if pattern.search(" ".join(tags)):
+                continue
+            filtered.append(result)
         return filtered
 
     async def _send_download_result(self, event: AstrMessageEvent, result: DownloadResult) -> bool:
@@ -620,6 +694,7 @@ class BookDownloadPlugin(Star):
             return "LLM 搜索工具已在插件配置中关闭。"
         try:
             results, errors = await self._run_text_search(query, source, page)
+            results = await self._filter_results_by_tags(results)
             results = await self._filter_results_by_language(results)
             return self.service.format_results(results, errors=errors)
         except Exception as exc:
@@ -643,6 +718,7 @@ class BookDownloadPlugin(Star):
             return "LLM 搜索工具已在插件配置中关闭。"
         try:
             results = await self._run_image_search(event, engine=engine, image_url=image_url)
+            results = await self._filter_results_by_tags(results)
             results = await self._filter_results_by_language(results)
             return self.service.format_results(results)
         except Exception as exc:

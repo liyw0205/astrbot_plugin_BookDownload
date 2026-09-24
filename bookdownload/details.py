@@ -76,16 +76,27 @@ class GalleryDetailService:
             parsed = default
         return max(minimum, min(parsed, maximum))
 
-    async def fetch(self, value: str, source_hint: str = "") -> GalleryDetail:
+    async def fetch(
+        self,
+        value: str,
+        source_hint: str = "",
+        include_previews: bool = True,
+    ) -> GalleryDetail:
         source, gallery_id, gallery_url = parse_gallery_reference(value, source_hint)
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         headers = {"User-Agent": "astrbot_plugin_BookDownload/0.6.0", "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7"}
         async with client_session(timeout=timeout, headers=headers, proxy=self.proxy) as (session, request_proxy):
             if source == "nhentai":
-                return await self._nhentai(session, request_proxy, gallery_id)
-            return await self._ehentai(session, request_proxy, gallery_id, gallery_url)
+                return await self._nhentai(session, request_proxy, gallery_id, include_previews)
+            return await self._ehentai(session, request_proxy, gallery_id, gallery_url, include_previews)
 
-    async def _nhentai(self, session: aiohttp.ClientSession, request_proxy: str | None, gallery_id: str) -> GalleryDetail:
+    async def _nhentai(
+        self,
+        session: aiohttp.ClientSession,
+        request_proxy: str | None,
+        gallery_id: str,
+        include_previews: bool = True,
+    ) -> GalleryDetail:
         url = NHENTAI_DETAIL.format(gallery_id=gallery_id)
         async with session.get(url, proxy=request_proxy, headers={"Referer": "https://nhentai.net/"}) as response:
             if response.status >= 400:
@@ -120,7 +131,7 @@ class GalleryDetailService:
         media_id = str(payload.get("media_id", "")).strip()
         page_urls: list[str] = []
         pages = payload.get("pages") or []
-        if isinstance(pages, list):
+        if include_previews and isinstance(pages, list):
             for index, page in enumerate(pages, start=1):
                 page_path = str(page.get("path", "")).strip().lstrip("/") if isinstance(page, dict) else ""
                 if page_path.startswith("galleries/"):
@@ -152,7 +163,14 @@ class GalleryDetailService:
                 raise DetailError(f"请求站点失败（HTTP {response.status}）。")
             return await response.text()
 
-    async def _ehentai(self, session: aiohttp.ClientSession, request_proxy: str | None, gallery_id: str, gallery_url: str) -> GalleryDetail:
+    async def _ehentai(
+        self,
+        session: aiohttp.ClientSession,
+        request_proxy: str | None,
+        gallery_id: str,
+        gallery_url: str,
+        include_previews: bool = True,
+    ) -> GalleryDetail:
         site = str(self.config.get("ehentai_site", "e-hentai")).strip().lower()
         if site not in {"e-hentai", "exhentai"}:
             raise DetailError("ehentai_site 只能是 e-hentai 或 exhentai。")
@@ -201,13 +219,14 @@ class GalleryDetailService:
             if parsed.netloc == urlparse(gallery_url).netloc and PAGE_LINK_RE.match(parsed.path) and absolute not in page_links:
                 page_links.append(absolute)
         page_urls: list[str] = []
-        for page_url in page_links[:4]:
-            page_html = await self._get_text(session, request_proxy, page_url, self._eh_headers(gallery_url))
-            page_soup = BeautifulSoup(page_html, "html.parser")
-            image = page_soup.select_one("#img, img#img")
-            image_url = str(image.get("src", "")).strip() if image else ""
-            if image_url:
-                page_urls.append(urljoin(page_url, image_url))
+        if include_previews:
+            for page_url in page_links[:6]:
+                page_html = await self._get_text(session, request_proxy, page_url, self._eh_headers(gallery_url))
+                page_soup = BeautifulSoup(page_html, "html.parser")
+                image = page_soup.select_one("#img, img#img")
+                image_url = str(image.get("src", "")).strip() if image else ""
+                if image_url:
+                    page_urls.append(urljoin(page_url, image_url))
         page_count = None
         for row in soup.select("#gdd tr"):
             match = re.search(r"(?:Length|pages?)\s*:\s*(\d+)\s*pages?", row.get_text(" ", strip=True), flags=re.I)
