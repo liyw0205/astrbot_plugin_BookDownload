@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from zipfile import ZipFile
 
 from PIL import Image
 
@@ -40,6 +41,18 @@ class DownloadUtilityTests(unittest.TestCase):
             for path in root.iterdir():
                 path.unlink()
             root.rmdir()
+
+    def test_archive_preserves_nested_source_paths(self):
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            image_path = root / "chapter-1" / "0001.jpg"
+            image_path.parent.mkdir()
+            Image.new("RGB", (10, 10), "white").save(image_path)
+            archive_path = BookDownloadService({})._build_outputs(
+                "archive", "sample", root, [image_path]
+            )[0]
+            with ZipFile(archive_path) as archive:
+                self.assertEqual(archive.namelist(), ["chapter-1/0001.jpg"])
 
 
 if __name__ == "__main__":

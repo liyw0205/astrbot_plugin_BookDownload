@@ -28,3 +28,4 @@ class GalleryDetail:
     groups: tuple[str, ...] = ()
     page_count: int | None = None
     page_urls: tuple[str, ...] = ()
+    preview_images: tuple[bytes, ...] = ()

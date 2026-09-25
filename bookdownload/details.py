@@ -8,6 +8,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .models import GalleryDetail
+from .jmcomic_source import JM_IMAGE_DOMAINS, fetch_jm_detail, jm_album_id_from_url
 from .network import client_session, normalize_proxy
 from .sources import ehentai_search_url, parse_ehentai_results
 
@@ -21,6 +22,7 @@ ALLOWED_IMAGE_HOSTS = {
     "exhentai.org",
     "ehgt.org",
     "hath.network",
+    *JM_IMAGE_DOMAINS,
 }
 
 
@@ -31,17 +33,24 @@ class DetailError(RuntimeError):
 def parse_gallery_reference(value: str, source_hint: str = "") -> tuple[str, str, str]:
     raw = str(value or "").strip()
     hint = str(source_hint or "").strip().lower()
-    if raw.isdigit():
-        if hint not in {"nhentai", "ehentai"}:
-            raise DetailError("输入作品 ID 时，必须通过 nh查看 或 eh查看 指定来源。")
-        return hint, raw, ""
+    jm_prefixed = re.fullmatch(r"(?i:jm)(\d+)", raw)
+    if raw.isdigit() or jm_prefixed:
+        if jm_prefixed and hint != "jmcomic":
+            raise DetailError("JM 编号请通过 jm查看 指定来源。")
+        if hint not in {"nhentai", "ehentai", "jmcomic"}:
+            raise DetailError("输入作品 ID 时，必须通过 nh查看、eh查看 或 jm查看 指定来源。")
+        return hint, jm_prefixed.group(1) if jm_prefixed else raw, ""
     parsed = urlparse(raw)
     host = (parsed.hostname or "").lower()
+    if parsed.scheme.lower() == "https" and host not in {"nhentai.net", "e-hentai.org", "exhentai.org"}:
+        jm_id = jm_album_id_from_url(raw)
+        if jm_id:
+            return "jmcomic", jm_id, raw
     if parsed.scheme.lower() != "https" or host not in ALLOWED_DETAIL_HOSTS:
-        raise DetailError("只支持 HTTPS 的 NHentai 或 E-Hentai 作品链接。")
+        raise DetailError("只支持 HTTPS 的 NHentai、E-Hentai 或 JM 作品链接。")
     match = re.match(r"^/g/(\d+)(?:/|$)", parsed.path)
     if not match:
-        raise DetailError("链接必须是作品页，例如 https://nhentai.net/g/123456/。")
+        raise DetailError("链接必须是作品页，例如 https://nhentai.net/g/123456/ 或 https://18comic.vip/album/123456/。")
     source = "nhentai" if host == "nhentai.net" else "ehentai"
     return source, match.group(1), raw
 
@@ -83,6 +92,16 @@ class GalleryDetailService:
         include_previews: bool = True,
     ) -> GalleryDetail:
         source, gallery_id, gallery_url = parse_gallery_reference(value, source_hint)
+        if source == "jmcomic":
+            try:
+                return await fetch_jm_detail(
+                    gallery_id,
+                    proxy=self.proxy,
+                    timeout=self.timeout,
+                    include_previews=include_previews,
+                )
+            except Exception as exc:
+                raise DetailError(f"JM 详情读取失败：{exc}") from exc
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         headers = {"User-Agent": "astrbot_plugin_BookDownload/0.6.0", "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.7"}
         async with client_session(timeout=timeout, headers=headers, proxy=self.proxy) as (session, request_proxy):

@@ -15,6 +15,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 from .network import client_session, normalize_proxy
+from .jmcomic_source import download_jm_album, jm_album_id_from_url
 from .sources import ehentai_search_url, parse_ehentai_results
 
 try:
@@ -106,12 +107,15 @@ class BookDownloadService:
 
     @staticmethod
     def _parse_url(url: str) -> tuple[str, str]:
+        jm_id = jm_album_id_from_url(url)
+        if jm_id:
+            return "jmcomic", jm_id
         parsed = urlparse(str(url or "").strip())
         if parsed.scheme.lower() != "https" or parsed.hostname not in ALLOWED_HOSTS:
-            raise DownloadError("只支持 HTTPS 的 NHentai 或 E-Hentai 作品链接。")
+            raise DownloadError("只支持 HTTPS 的 NHentai、E-Hentai 或 JM 作品链接。")
         match = re.match(r"^/g/(\d+)(?:/|$)", parsed.path)
         if not match:
-            raise DownloadError("链接必须是作品页，例如 https://nhentai.net/g/123456/。")
+            raise DownloadError("链接必须是作品页，例如 https://nhentai.net/g/123456/ 或 https://18comic.vip/album/123456/。")
         source = "nhentai" if parsed.hostname == "nhentai.net" else "ehentai"
         return source, match.group(1)
 
@@ -131,10 +135,13 @@ class BookDownloadService:
         source = str(source_hint or "").strip().lower()
         gallery_id = ""
         if raw_url.isdigit():
-            if source not in {"nhentai", "ehentai"}:
-                raise DownloadError("输入作品 ID 时，必须通过 nh下载 或 eh下载 指定来源。")
+            if source not in {"nhentai", "ehentai", "jmcomic"}:
+                raise DownloadError("输入作品 ID 时，必须通过 nh下载、eh下载 或 jm下载 指定来源。")
             gallery_id = raw_url
             gallery_url = f"https://nhentai.net/g/{gallery_id}/" if source == "nhentai" else ""
+        elif re.fullmatch(r"(?i:jm)\d+", raw_url) and source == "jmcomic":
+            gallery_id = re.sub(r"(?i)^jm", "", raw_url)
+            gallery_url = ""
         else:
             source, gallery_id = self._parse_url(raw_url)
             gallery_url = raw_url
@@ -143,18 +150,28 @@ class BookDownloadService:
         temp_parent.mkdir(parents=True, exist_ok=True)
         root = Path(tempfile.mkdtemp(prefix="bookdownload_", dir=str(temp_parent)))
         try:
-            async with client_session(timeout=timeout, headers=self._headers(str(url)), proxy=self.proxy) as (session, request_proxy):
-                if source == "nhentai":
-                    title, page_urls = await self._nhentai_pages(session, request_proxy, gallery_id)
-                else:
-                    if not gallery_url:
-                        gallery_url = await self._resolve_ehentai_id(session, request_proxy, gallery_id)
-                    title, page_urls = await self._ehentai_pages(session, request_proxy, gallery_url, gallery_id)
-                if not page_urls:
-                    raise DownloadError("没有找到可下载的页面，可能是链接失效或站点限制访问。")
-                if len(page_urls) > self.max_pages:
-                    page_urls = page_urls[: self.max_pages]
-                image_paths = await self._download_pages(session, request_proxy, page_urls, root)
+            if source == "jmcomic":
+                title, image_paths = await download_jm_album(
+                    gallery_id,
+                    root,
+                    proxy=self.proxy,
+                    timeout=self.timeout,
+                    max_pages=self.max_pages,
+                    max_mb=self.max_mb,
+                )
+            else:
+                async with client_session(timeout=timeout, headers=self._headers(str(url)), proxy=self.proxy) as (session, request_proxy):
+                    if source == "nhentai":
+                        title, page_urls = await self._nhentai_pages(session, request_proxy, gallery_id)
+                    else:
+                        if not gallery_url:
+                            gallery_url = await self._resolve_ehentai_id(session, request_proxy, gallery_id)
+                        title, page_urls = await self._ehentai_pages(session, request_proxy, gallery_url, gallery_id)
+                    if not page_urls:
+                        raise DownloadError("没有找到可下载的页面，可能是链接失效或站点限制访问。")
+                    if len(page_urls) > self.max_pages:
+                        page_urls = page_urls[: self.max_pages]
+                    image_paths = await self._download_pages(session, request_proxy, page_urls, root)
             if not image_paths:
                 raise DownloadError("页面图片下载失败。")
             output_paths = self._build_outputs(selected_format, _safe_title(title), root, image_paths)
@@ -313,7 +330,7 @@ class BookDownloadService:
             archive_path = root / f"{title}.zip"
             with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
                 for path in image_paths:
-                    archive.write(path, arcname=path.name)
+                    archive.write(path, arcname=path.relative_to(root).as_posix())
             return [archive_path]
         try:
             from PIL import Image

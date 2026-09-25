@@ -9,6 +9,7 @@ import aiohttp
 
 from .models import SearchResult
 from .network import client_session, normalize_proxy
+from .jmcomic_source import JM_IMAGE_DOMAINS, jm_album_id_from_url, search_jmcomic
 from .sources import NHENTAI_API, ehentai_search_url, nhentai_result, parse_ehentai_results
 
 USER_AGENT = "astrbot_plugin_BookDownload/0.5.0 (https://github.com/liyw0205/astrbot_plugin_BookDownload)"
@@ -18,6 +19,7 @@ DISPLAY_IMAGE_HOSTS = (
     "exhentai.org",
     "ehgt.org",
     "saucenao.com",
+    *JM_IMAGE_DOMAINS,
 )
 
 
@@ -46,11 +48,12 @@ class BookSearchService:
         query = str(query or "").strip()
         if not query:
             raise ValueError("搜索词不能为空。")
-        query = self._apply_language_filter_query(query)
         if len(query) > 200:
             raise ValueError("搜索词不能超过 200 个字符。")
         page = self._bounded_int(page, 1, 1, 50)
         selected = self._normalize_source(source or self.config.get("default_text_source", "all"))
+        query_with_language = self._apply_language_filter_query(query)
+        jm_query = re.sub(r"(?:^|\s)language:[^\s]+", " ", query, flags=re.IGNORECASE).strip() or query
         timeout = aiohttp.ClientTimeout(total=self.timeout)
         headers = {
             "User-Agent": USER_AGENT,
@@ -59,9 +62,11 @@ class BookSearchService:
         async with client_session(timeout=timeout, headers=headers, proxy=self.proxy) as (session, request_proxy):
             tasks = []
             if "nhentai" in selected:
-                tasks.append(self._search_nhentai(session, query, page, request_proxy))
+                tasks.append(self._search_nhentai(session, query_with_language, page, request_proxy))
             if "ehentai" in selected:
-                tasks.append(self._search_ehentai(session, query, page, request_proxy))
+                tasks.append(self._search_ehentai(session, query_with_language, page, request_proxy))
+            if "jmcomic" in selected:
+                tasks.append(search_jmcomic(jm_query, page, proxy=self.proxy, timeout=self.timeout))
             responses = await asyncio.gather(*tasks, return_exceptions=True)
 
         source_results: list[list[SearchResult]] = []
@@ -96,17 +101,19 @@ class BookSearchService:
     @staticmethod
     def _normalize_source(source: str) -> list[str]:
         aliases = {
-            "all": ["nhentai", "ehentai"],
+            "all": ["nhentai", "ehentai", "jmcomic"],
             "nh": ["nhentai"],
             "nhentai": ["nhentai"],
             "eh": ["ehentai"],
             "e-hentai": ["ehentai"],
             "ehentai": ["ehentai"],
+            "jm": ["jmcomic"],
+            "jmcomic": ["jmcomic"],
         }
         try:
             return aliases[str(source or "all").strip().lower()]
         except KeyError as exc:
-            raise ValueError("source 只能是 all、nhentai 或 ehentai。") from exc
+            raise ValueError("source 只能是 all、nhentai、ehentai 或 jmcomic。") from exc
 
     async def _search_nhentai(
         self,
@@ -161,9 +168,12 @@ class BookSearchService:
             selected_engine = str(self.config.get("reverse_engine", "ehentai")).strip().lower()
         if selected_engine == "ehentai":
             return await self._reverse_ehentai(image)
-        if selected_engine == "saucenao":
-            return await self._reverse_saucenao(image)
-        raise ValueError("engine 只能是 ehentai、saucenao 或 auto。")
+        if selected_engine in {"saucenao", "jmcomic", "jm"}:
+            results = await self._reverse_saucenao(image)
+            if selected_engine in {"jmcomic", "jm"}:
+                return [result for result in results if result.source == "jmcomic"]
+            return results
+        raise ValueError("engine 只能是 ehentai、saucenao、jmcomic 或 auto。")
 
     async def _reverse_ehentai(self, image: bytes) -> list[SearchResult]:
         site = str(self.config.get("ehentai_site", "e-hentai")).strip().lower()
@@ -210,6 +220,9 @@ class BookSearchService:
             data = item.get("data") or {}
             ext_urls = data.get("ext_urls") or []
             url = str(ext_urls[0]) if ext_urls else "https://saucenao.com/"
+            jm_id = jm_album_id_from_url(url)
+            if jm_id:
+                url = f"https://18comic.vip/album/{jm_id}/"
             title = next(
                 (str(data[key]) for key in ("title", "material", "jp_name", "eng_name", "source") if data.get(key)),
                 "(untitled)",
@@ -219,7 +232,7 @@ class BookSearchService:
                 author_value = ", ".join(str(value) for value in author_value)
             results.append(
                 SearchResult(
-                    source="saucenao",
+                    source="jmcomic" if jm_id else "saucenao",
                     title=title,
                     url=url,
                     cover_url=str(header.get("thumbnail", "")),

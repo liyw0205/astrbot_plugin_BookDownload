@@ -36,6 +36,14 @@ class CommandParsingTests(unittest.TestCase):
         with self.assertRaises(DownloadError):
             BookDownloadService({})._parse_url("12345")
 
+    def test_jm_album_urls_are_validated_and_normalized(self):
+        self.assertEqual(
+            BookDownloadService._parse_url("https://18comic.vip/album/12345/"),
+            ("jmcomic", "12345"),
+        )
+        with self.assertRaises(DownloadError):
+            BookDownloadService._parse_url("https://attacker.example/album/12345/")
+
     def test_result_card_renders_a_valid_image_with_gallery_id(self):
         path = asyncio.run(
             render_result_card(

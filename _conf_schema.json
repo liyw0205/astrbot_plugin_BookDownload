@@ -3,8 +3,8 @@
     "description": "文搜默认来源",
     "type": "string",
     "default": "all",
-    "options": ["all", "nhentai", "ehentai"],
-    "hint": "LLM 文搜工具未指定来源时使用；命令搜索由 nh搜索 / eh搜索 指定。"
+    "options": ["all", "nhentai", "ehentai", "jmcomic"],
+    "hint": "LLM 文搜工具未指定来源时使用；命令搜索由 nh搜索 / eh搜索 / jm搜索 指定。"
   },
   "result_display_mode": {
     "description": "搜索结果默认展示方式",
@@ -17,14 +17,14 @@
     "description": "默认图片反搜引擎",
     "type": "string",
     "default": "ehentai",
-    "options": ["ehentai", "saucenao"],
-    "hint": "E-Hentai 默认；SauceNAO 需配置 API Key，且会上传图片到该服务。"
+    "options": ["ehentai", "saucenao", "jmcomic"],
+    "hint": "E-Hentai 默认；SauceNAO/JM 需配置 API Key，且会上传图片到 SauceNAO。"
   },
   "saucenao_api_key": {
     "description": "SauceNAO API Key",
     "type": "string",
     "default": "",
-    "hint": "NH 图片搜索会使用此 Key；SauceNAO 会收到上传的图片。"
+    "hint": "NH/JM 图片搜索会使用此 Key；SauceNAO 会收到上传的图片。"
   },
   "ehentai_site": {
     "description": "E-Hentai 站点",
@@ -115,7 +115,7 @@
     "description": "每日推送来源",
     "type": "string",
     "default": "nhentai",
-    "options": ["nhentai", "ehentai", "all"]
+    "options": ["nhentai", "ehentai", "jmcomic", "all"]
   },
   "daily_push_tag_regex": {
     "description": "每日推送标签正则",

@@ -26,6 +26,7 @@ from .bookdownload.download import BookDownloadService, DownloadResult, normaliz
 from .bookdownload.details import DetailError, GalleryDetailService
 from .bookdownload.detail_presentation import render_detail_card
 from .bookdownload.image_input import read_image_input
+from .bookdownload.jmcomic_source import JM_SITE_DOMAINS
 from .bookdownload.models import SearchResult
 from .bookdownload.network import mask_proxy, normalize_proxy
 from .bookdownload.presentation import format_text_results, render_result_card
@@ -42,23 +43,29 @@ HELP_TEXT = """本子搜索下载指令
 搜索（自动识别文字或消息/引用图片）：
   /nh搜索 <关键词|附图> [页码] [图卡|图文|文字]
   /eh搜索 <关键词|附图> [页码] [图卡|图文|文字]
+  /jm搜索 <关键词|附图> [页码] [图卡|图文|文字]
   示例：/nh搜索 blue archive
+  示例：/jm搜索 blue archive
   示例：回复一张图片发送 /eh搜索 图文
   图卡为默认结果样式，也可在配置页修改默认样式。
-  NH 图片搜索会调用 SauceNAO，请先配置 API Key。
+  NH/JM 图片搜索会调用 SauceNAO，请先配置 API Key。
 
 下载：
   /nh下载 <作品ID或完整链接> [pdf|压缩包|图片|长图]
   /eh下载 <作品ID或完整链接> [pdf|压缩包|图片|长图]
+  /jm下载 <作品ID或完整链接> [pdf|压缩包|图片|长图]
   示例：/nh下载 683646 pdf
   示例：/eh下载 https://e-hentai.org/g/123/abcdef/ 压缩包
+  示例：/jm下载 https://18comic.vip/album/123456/ 图片
   长图每 10 张合并一张。群聊中的图片/长图会私发给发起者。
 
 详情：
   /nh查看 <作品ID或完整链接>
   /eh查看 <作品ID或完整链接>
+  /jm查看 <作品ID或完整链接>
   示例：/nh查看 683646
   示例：/eh查看 https://e-hentai.org/g/4209794/7e5062ea61/
+  示例：/jm查看 123456
   详情卡包含封面、标题、Tags、Languages、Pages、Artists、Groups 和前 6 页预览。
 
 每日推送：
@@ -166,19 +173,19 @@ class BookDownloadPlugin(Star):
                     next_config[key] = int(patch[key])
                 except (TypeError, ValueError) as exc:
                     raise ValueError(f"{key} 必须是整数。") from exc
-        if str(next_config.get("reverse_engine", "ehentai")).strip().lower() not in {"ehentai", "saucenao"}:
-            raise ValueError("reverse_engine 只能是 ehentai 或 saucenao。")
+        if str(next_config.get("reverse_engine", "ehentai")).strip().lower() not in {"ehentai", "saucenao", "jmcomic", "jm"}:
+            raise ValueError("reverse_engine 只能是 ehentai、saucenao 或 jmcomic。")
         if str(next_config.get("ehentai_site", "e-hentai")).strip().lower() not in {"e-hentai", "exhentai"}:
             raise ValueError("ehentai_site 只能是 e-hentai 或 exhentai。")
-        if str(next_config.get("default_text_source", "all")).strip().lower() not in {"all", "nhentai", "ehentai", "nh", "eh"}:
-            raise ValueError("default_text_source 只能是 all、nhentai 或 ehentai。")
+        if str(next_config.get("default_text_source", "all")).strip().lower() not in {"all", "nhentai", "ehentai", "jmcomic", "nh", "eh", "jm"}:
+            raise ValueError("default_text_source 只能是 all、nhentai、ehentai 或 jmcomic。")
         next_config["download_format"] = normalize_download_format(next_config.get("download_format", "archive"))
         next_config["result_display_mode"] = normalize_result_mode(next_config.get("result_display_mode", "card"))
         if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", str(next_config.get("daily_push_time", "12:05")).strip()):
             raise ValueError("daily_push_time 必须是 HH:MM 格式。")
         daily_source = str(next_config.get("daily_push_source", "nhentai")).strip().lower()
-        if daily_source not in {"nhentai", "ehentai", "all", "nh", "eh"}:
-            raise ValueError("daily_push_source 只能是 nhentai、ehentai 或 all。")
+        if daily_source not in {"nhentai", "ehentai", "jmcomic", "all", "nh", "eh", "jm"}:
+            raise ValueError("daily_push_source 只能是 nhentai、ehentai、jmcomic 或 all。")
         tag_regex = str(next_config.get("daily_push_tag_regex", "")).strip()
         if tag_regex:
             try:
@@ -457,8 +464,10 @@ class BookDownloadPlugin(Star):
                     proxy=self.service.proxy,
                     timeout=self.service.timeout,
                 )
-                engine = "saucenao" if source == "nhentai" else "ehentai"
+                engine = "ehentai" if source == "ehentai" else "saucenao"
                 results = await self.service.search_image(image, engine=engine)
+                if source == "jmcomic":
+                    results = [result for result in results if result.source == "jmcomic"]
                 results = await self._filter_results_by_tags(results)
                 results = await self._filter_results_by_language(results)
                 return await self._search_response(event, results, [], mode)
@@ -482,7 +491,7 @@ class BookDownloadPlugin(Star):
         filtered: list[SearchResult] = []
         for result in results:
             try:
-                hint = result.source if result.source in {"nhentai", "ehentai"} else ""
+                hint = result.source if result.source in {"nhentai", "ehentai", "jmcomic"} else ""
                 detail = await self.detail_service.fetch(result.url, source_hint=hint, include_previews=False)
             except Exception as exc:
                 logger.debug("Language filter detail request failed for %s: %s", result.url, exc)
@@ -512,13 +521,15 @@ class BookDownloadPlugin(Star):
         filtered: list[SearchResult] = []
         for result in results:
             tags = result.tags
-            source_hint = result.source if result.source in {"nhentai", "ehentai"} else ""
+            source_hint = result.source if result.source in {"nhentai", "ehentai", "jmcomic"} else ""
             if not source_hint:
                 hostname = (urlparse(result.url).hostname or "").lower()
                 if hostname == "nhentai.net":
                     source_hint = "nhentai"
                 elif hostname in {"e-hentai.org", "exhentai.org"}:
                     source_hint = "ehentai"
+                elif any(hostname == domain or hostname.endswith("." + domain) for domain in JM_SITE_DOMAINS):
+                    source_hint = "jmcomic"
             if not tags and source_hint:
                 if result.url not in cache:
                     try:
@@ -622,6 +633,10 @@ class BookDownloadPlugin(Star):
     async def eh_search(self, event: AstrMessageEvent, arguments: GreedyStr):
         yield await self._handle_search(event, "ehentai", arguments)
 
+    @filter.command("jm搜索")
+    async def jm_search(self, event: AstrMessageEvent, arguments: GreedyStr):
+        yield await self._handle_search(event, "jmcomic", arguments)
+
     @filter.regex(NATURAL_BOOK_SEARCH_PATTERN)
     async def natural_book_search(self, event: AstrMessageEvent):
         """Handle an explicit natural-language gallery search before the chat agent."""
@@ -659,6 +674,11 @@ class BookDownloadPlugin(Star):
         async for response in self._handle_download(event, "ehentai", identifier, output_format):
             yield response
 
+    @filter.command("jm下载")
+    async def jm_download(self, event: AstrMessageEvent, identifier: str, output_format: str = ""):
+        async for response in self._handle_download(event, "jmcomic", identifier, output_format):
+            yield response
+
     @filter.command("nh查看")
     async def nh_view(self, event: AstrMessageEvent, arguments: GreedyStr):
         yield await self._handle_view(event, "nhentai", arguments)
@@ -667,10 +687,15 @@ class BookDownloadPlugin(Star):
     async def eh_view(self, event: AstrMessageEvent, arguments: GreedyStr):
         yield await self._handle_view(event, "ehentai", arguments)
 
+    @filter.command("jm查看")
+    async def jm_view(self, event: AstrMessageEvent, arguments: GreedyStr):
+        yield await self._handle_view(event, "jmcomic", arguments)
+
     async def _handle_view(self, event: AstrMessageEvent, source: str, identifier: str):
         value = str(identifier or "").strip()
         if not value:
-            return event.plain_result(f"请提供作品 ID 或完整链接，例如：/{'nh' if source == 'nhentai' else 'eh'}查看 683646")
+            command = {"nhentai": "nh", "ehentai": "eh", "jmcomic": "jm"}.get(source, "nh")
+            return event.plain_result(f"请提供作品 ID 或完整链接，例如：/{command}查看 683646")
         card_path = None
         try:
             detail = await self.detail_service.fetch(value, source_hint=source)
@@ -692,7 +717,7 @@ class BookDownloadPlugin(Star):
             return event.plain_result(f"查看失败: {exc}")
 
     async def _handle_download(self, event: AstrMessageEvent, source: str, identifier: str, output_format: str = ""):
-        """Download a gallery from an explicit NHentai or E-Hentai URL."""
+        """Download a gallery from an explicit source command."""
         result: DownloadResult | None = None
         try:
             yield event.plain_result("正在下载本子，请稍候…")
@@ -727,7 +752,7 @@ class BookDownloadPlugin(Star):
 
         Args:
             query(string): Work, character, artist, or tag to search. Keep the user's words; do not add language filters.
-            source(string): Source name: all, nhentai, or ehentai. Leave empty for the configured default.
+            source(string): Source name: all, nhentai, ehentai, or jmcomic. Leave empty for the configured default.
             page(number): Result page, starting at 1.
         """
         if not self.config.get("llm_tools_enabled", True):
@@ -751,7 +776,7 @@ class BookDownloadPlugin(Star):
         """Reverse-search an image attached to this message or a public image URL.
 
         Args:
-            engine(string): Reverse engine: ehentai, saucenao, or auto.
+            engine(string): Reverse engine: ehentai, saucenao, jmcomic, or auto.
             image_url(string): Optional public HTTPS image URL; otherwise use the message image.
         """
         if not self.config.get("llm_tools_enabled", True):

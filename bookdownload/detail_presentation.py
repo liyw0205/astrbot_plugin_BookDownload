@@ -92,10 +92,22 @@ async def render_detail_card(detail: GalleryDetail, *, proxy: str | None, timeou
     request_timeout = aiohttp.ClientTimeout(total=timeout)
     async with client_session(timeout=request_timeout, proxy=proxy) as (session, request_proxy):
         referer = detail.url
-        cover, *pages = await asyncio.gather(
+        cover, *remote_pages = await asyncio.gather(
             _fetch_image(session, request_proxy, detail.cover_url, referer),
-            *(_fetch_image(session, request_proxy, page_url, referer) for page_url in detail.page_urls[:6]),
+            *(
+                _fetch_image(session, request_proxy, page_url, referer)
+                for page_url in detail.page_urls[: max(0, 6 - len(detail.preview_images))]
+            ),
         )
+    preview_pages = []
+    for data in detail.preview_images[:6]:
+        try:
+            with Image.open(io.BytesIO(data)) as opened:
+                opened.load()
+                preview_pages.append(opened.convert("RGB"))
+        except Exception:
+            preview_pages.append(None)
+    pages = preview_pages + remote_pages
 
     width, top_height = 820, 450
     padding, gap = 24, 12

@@ -114,8 +114,9 @@ class SearchServiceTests(unittest.TestCase):
         self.assertNotIn("secret", mask_proxy("https://user:secret@example.com:8443"))
 
     def test_source_aliases_and_validation(self):
-        self.assertEqual(BookSearchService._normalize_source("all"), ["nhentai", "ehentai"])
+        self.assertEqual(BookSearchService._normalize_source("all"), ["nhentai", "ehentai", "jmcomic"])
         self.assertEqual(BookSearchService._normalize_source("eh"), ["ehentai"])
+        self.assertEqual(BookSearchService._normalize_source("jm"), ["jmcomic"])
         with self.assertRaises(ValueError):
             BookSearchService._normalize_source("unknown")
 
@@ -129,24 +130,27 @@ class SearchServiceTests(unittest.TestCase):
         allowed = BookSearchService.is_display_image_url
         self.assertTrue(allowed("https://t.nhentai.net/cover.jpg"))
         self.assertTrue(allowed("https://ehgt.org/cover.jpg"))
+        self.assertTrue(allowed("https://cdn-msp.jmapiproxy1.cc/cover.jpg"))
         self.assertFalse(allowed("http://t.nhentai.net/cover.jpg"))
         self.assertFalse(allowed("https://attacker.example/cover.jpg"))
 
     def test_all_sources_are_interleaved_before_result_limit(self):
-        service = BookSearchService({"max_results": 3})
+        service = BookSearchService({"max_results": 4})
         nhentai = [
             SearchResult("nhentai", "NH 1", "https://nhentai.net/g/1/"),
             SearchResult("nhentai", "NH 2", "https://nhentai.net/g/2/"),
         ]
         ehentai = [SearchResult("ehentai", "EH 1", "https://e-hentai.org/g/1/abc/")]
+        jmcomic = [SearchResult("jmcomic", "JM 1", "https://18comic.vip/album/1/")]
 
         async def search():
             with patch.object(service, "_search_nhentai", new=AsyncMock(return_value=nhentai)):
                 with patch.object(service, "_search_ehentai", new=AsyncMock(return_value=ehentai)):
-                    return await service.search_text("sample")
+                    with patch("bookdownload.service.search_jmcomic", new=AsyncMock(return_value=jmcomic)):
+                        return await service.search_text("sample")
 
         results, errors = asyncio.run(search())
-        self.assertEqual([result.source for result in results], ["nhentai", "ehentai", "nhentai"])
+        self.assertEqual([result.source for result in results], ["nhentai", "ehentai", "jmcomic", "nhentai"])
         self.assertEqual(errors, [])
 
     def test_auto_image_engine_uses_configured_engine(self):
@@ -158,6 +162,32 @@ class SearchServiceTests(unittest.TestCase):
                 reverse.assert_awaited_once_with(b"image")
 
         asyncio.run(search())
+
+    def test_jm_image_engine_uses_saucenao_and_filters_to_jm_matches(self):
+        service = BookSearchService({})
+        candidates = [
+            SearchResult("jmcomic", "JM", "https://18comic.vip/album/1/"),
+            SearchResult("saucenao", "Other", "https://example.com/work"),
+        ]
+
+        async def search():
+            with patch.object(service, "_reverse_saucenao", new=AsyncMock(return_value=candidates)) as reverse:
+                results = await service.search_image(b"image", engine="jmcomic")
+                reverse.assert_awaited_once_with(b"image")
+                return results
+
+        self.assertEqual([result.source for result in asyncio.run(search())], ["jmcomic"])
+
+    def test_jm_search_does_not_send_language_operator_to_site_search(self):
+        service = BookSearchService({"language_filter_enabled": True, "daily_push_language": "chinese"})
+
+        async def search():
+            with patch("bookdownload.service.search_jmcomic", new=AsyncMock(return_value=[])) as jm_search:
+                await service.search_text("language:chinese blue archive", source="jm")
+                return jm_search
+
+        jm_search = asyncio.run(search())
+        self.assertEqual(jm_search.await_args.args[:2], ("blue archive", 1))
 
 
 class ImageUrlSecurityTests(unittest.TestCase):

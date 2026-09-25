@@ -33,24 +33,24 @@
 <body>
 <main>
     <h1>本子搜索下载配置</h1>
-    <p class="muted">配置会应用到 NHentai/E-Hentai 搜索、下载指令和两个 LLM 搜索工具。</p>
+    <p class="muted">配置会应用到 NHentai、E-Hentai、JM 搜索下载和两个 LLM 搜索工具。</p>
   <form id="configForm">
     <fieldset>
       <legend>搜索与反搜</legend>
       <label>文搜默认来源
-        <select name="default_text_source"><option value="all">全部来源</option><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option></select>
-        <span class="hint">用于 LLM 文搜工具；命令搜索由 nh搜索 / eh搜索 指定。</span>
+        <select name="default_text_source"><option value="all">全部来源</option><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option><option value="jmcomic">JM</option></select>
+        <span class="hint">用于 LLM 文搜工具；命令搜索由 nh搜索 / eh搜索 / jm搜索 指定。</span>
       </label>
       <label>搜索结果默认展示方式
         <select name="result_display_mode"><option value="card">图卡</option><option value="image_text">图文</option><option value="text">文字</option></select>
         <span class="hint">图卡将结果、封面和标题排版为一张图片；图文只发送封面图片，不发送封面链接。</span>
       </label>
       <label>默认反搜引擎
-        <select name="reverse_engine"><option value="ehentai">E-Hentai</option><option value="saucenao">SauceNAO</option></select>
+        <select name="reverse_engine"><option value="ehentai">E-Hentai</option><option value="saucenao">SauceNAO</option><option value="jmcomic">JM（SauceNAO）</option></select>
       </label>
       <label>SauceNAO API Key
         <input name="saucenao_api_key" type="password" autocomplete="off">
-        <span class="hint">NH 图片搜索需要配置；留空或保持掩码表示不修改已有 Key。</span>
+        <span class="hint">NH/JM 图片搜索需要配置；留空或保持掩码表示不修改已有 Key。</span>
       </label>
       <label>E-Hentai 站点
         <select name="ehentai_site"><option value="e-hentai">E-Hentai</option><option value="exhentai">ExHentai</option></select>
@@ -92,7 +92,7 @@
         <span class="hint">本机时区，每天一次；默认 12:05。</span>
       </label>
       <label>推送来源
-        <select name="daily_push_source"><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option><option value="all">全部来源</option></select>
+        <select name="daily_push_source"><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option><option value="jmcomic">JM</option><option value="all">全部来源</option></select>
       </label>
       <label>标签正则
         <input name="daily_push_tag_regex" type="text" placeholder="blowjob|stockings|lolicon">
