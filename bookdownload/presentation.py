@@ -8,7 +8,7 @@ import tempfile
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlparse, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urljoin, urlparse, urlsplit, urlunsplit
 
 import aiohttp
 
@@ -91,6 +91,18 @@ def _cover_candidates(result: SearchResult) -> list[str]:
             if candidate not in candidates:
                 candidates.append(candidate)
     return candidates
+
+
+def _result_id(result: SearchResult) -> str:
+    """Return the numeric work ID from the canonical result URL."""
+    parsed = urlparse(result.url)
+    path_parts = [part for part in parsed.path.split("/") if part]
+    source = result.source.lower()
+    route_names = {"album"} if source in {"jm", "jmcomic"} else {"g"}
+    if len(path_parts) >= 2 and path_parts[0].lower() in route_names and path_parts[1].isdigit():
+        return path_parts[1]
+    query_id = parse_qs(parsed.query).get("id", [""])[0].strip()
+    return query_id if query_id.isdigit() else ""
 
 
 async def _fetch_cover(
@@ -208,9 +220,9 @@ async def render_result_card(
             draw.text((text_x, title_y), line, font=row_title_font, fill="#26332e")
             title_y += 31
         meta_parts = []
-        path_parts = [part for part in urlparse(result.url).path.split("/") if part]
-        if len(path_parts) >= 2 and path_parts[0] == "g":
-            meta_parts.append(f"ID {path_parts[1]}")
+        result_id = _result_id(result)
+        if result_id:
+            meta_parts.append(f"ID {result_id}")
         if result.author:
             meta_parts.append(result.author)
         if result.page_count:
@@ -232,6 +244,9 @@ def format_text_results(results: list[SearchResult], errors: list[str] | None = 
         blocks = []
         for index, result in enumerate(results, 1):
             lines = [f"[{index}] {result.title}", f"来源: {result.source}"]
+            result_id = _result_id(result)
+            if result_id:
+                lines.append(f"ID: {result_id}")
             if result.author:
                 lines.append(f"作者: {result.author}")
             if result.page_count:

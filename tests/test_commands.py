@@ -11,7 +11,7 @@ from PIL import Image
 from bookdownload.commands import normalize_result_mode, parse_natural_book_search, parse_search_arguments
 from bookdownload.download import BookDownloadService, DownloadError
 from bookdownload.models import SearchResult
-from bookdownload.presentation import _cover_candidates, _fetch_cover, _font, render_result_card
+from bookdownload.presentation import _cover_candidates, _fetch_cover, _font, _result_id, format_text_results, render_result_card
 
 
 class CommandParsingTests(unittest.TestCase):
@@ -43,6 +43,11 @@ class CommandParsingTests(unittest.TestCase):
         )
         with self.assertRaises(DownloadError):
             BookDownloadService._parse_url("https://attacker.example/album/12345/")
+
+    def test_result_ids_support_jm_urls_and_text_results(self):
+        result = SearchResult("jmcomic", "JM title", "https://18comic.vip/album/12345/")
+        self.assertEqual(_result_id(result), "12345")
+        self.assertIn("ID: 12345", format_text_results([result]))
 
     def test_result_card_renders_a_valid_image_with_gallery_id(self):
         path = asyncio.run(
