@@ -12,6 +12,11 @@ from urllib.parse import parse_qs, urljoin, urlparse, urlsplit, urlunsplit
 
 import aiohttp
 
+try:
+    from astrbot.api import logger
+except ImportError:  # pragma: no cover - AstrBot supplies this at runtime
+    logger = logging.getLogger(__name__)
+
 from .models import SearchResult
 from .network import client_session
 from .service import BookSearchService
@@ -21,7 +26,6 @@ try:
 except ImportError:  # pragma: no cover - AstrBot supplies this at runtime
     get_astrbot_temp_path = tempfile.gettempdir
 
-logger = logging.getLogger(__name__)
 MAX_COVER_BYTES = 5 * 1024 * 1024
 
 
