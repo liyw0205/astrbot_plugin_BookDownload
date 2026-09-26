@@ -50,7 +50,7 @@ AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai / JM 的文字搜�
 - `proxy_url`: 可选代理地址，支持 `http://`、`https://`、`socks5://` 和 `socks5h://`。
 - `max_results`: 每次返回数量，范围 1-12。
 - `tag_filter_enabled`: 标签正则过滤开关，默认开启；搜索、每日推送和今日本子都会应用。
-- `tag_filter_regex`: 命中作品 Tags 即排除，默认 `yaoi|tomgirl|futanari|guro|scat|vore|bestiality`，可自行修改为正则。
+- `tag_filter_regex`: 命中作品 Tags 即排除，支持自定义正则；留空表示不启用标签排除。
 - `max_image_mb`: 图片输入上限，范围 1-20 MB。
 - `default_text_source`: LLM 文搜工具未指定来源时使用的默认来源，可选 NHentai、E-Hentai、JM 或全部；命令搜索由 `nh搜索` / `eh搜索` / `jm搜索` 指定。
 - `result_display_mode`: 搜索结果默认展示方式，可选 `card`（图卡）、`image_text`（图文）、`text`（文字）。
@@ -60,14 +60,13 @@ AstrBot 本子搜索下载插件，提供 NHentai / E-Hentai / JM 的文字搜�
 - `daily_push_enabled`: 每日推送开关，默认关闭；关闭时不会创建定时任务。
 - `daily_push_time`: 每日推送时间，格式 `HH:MM`，默认 `12:05`。
 - `daily_push_source`: 每日推送来源，可选 `nhentai`、`ehentai`、`jmcomic`、`all`。
-- `daily_push_tag_regex`: 标签候选正则，例如 `blowjob|stockings|lolicon`，每天随机选择一个候选。
+- `daily_push_tag_regex`: 可选的标签候选正则，用 `|` 分隔后每天随机选择一个；留空则不限定标签。
 - `daily_push_language`: Languages 筛选值，例如 `chinese`；每日推送始终使用此筛选。
 - `language_filter_enabled`: 开启后普通搜索、LLM 搜索和反向搜图也会按 `daily_push_language` 校验详情 Languages。
 - `daily_push_group_ids`: 推送群号，多个群号用 `|` 分隔，例如 `123456|654321`。
 - `daily_push_friend_ids`: 推送私聊/Q号，多个号码用 `|` 分隔，例如 `123456|654321`。
 - `daily_push_platform`: 平台标识，QQ OneBot 通常为 `aiocqhttp`。
 - `今日本子`: 立即触发一次推送，只发送到当前触发指令的会话；即使每日推送开关关闭也可以手动触发，不读取定时推送目标配置。
-- `daily_push_target`: 旧版完整会话配置，仅用于兼容已有配置。
 
 ## 注意事项
 

@@ -66,8 +66,8 @@
   "tag_filter_regex": {
     "description": "标签排除正则",
     "type": "string",
-    "default": "yaoi|tomgirl|futanari|guro|scat|vore|bestiality",
-    "hint": "命中作品 Tags 即排除；支持正则，默认排除 yaoi、tomgirl、futanari、guro、scat、vore、bestiality。"
+    "default": "",
+    "hint": "命中作品 Tags 即排除；支持正则，留空表示不启用标签排除。"
   },
   "max_image_mb": {
     "description": "反搜图片大小上限（MB）",
@@ -120,8 +120,8 @@
   "daily_push_tag_regex": {
     "description": "每日推送标签正则",
     "type": "string",
-    "default": "blowjob|stockings|lolicon",
-    "hint": "用 | 分隔候选标签，每天随机选择一个；也会校验为有效正则。"
+    "default": "",
+    "hint": "用 | 分隔候选标签，每天随机选择一个；留空则不限定标签。"
   },
   "daily_push_language": {
     "description": "每日推送语言筛选",
@@ -152,11 +152,5 @@
     "type": "string",
     "default": "aiocqhttp",
     "hint": "QQ OneBot 通常为 aiocqhttp，一般无需修改。"
-  },
-  "daily_push_target": {
-    "description": "旧版每日推送目标会话（兼容）",
-    "type": "string",
-    "default": "",
-    "hint": "兼容旧配置；新配置请使用群号和私聊/Q号字段。"
   }
 }

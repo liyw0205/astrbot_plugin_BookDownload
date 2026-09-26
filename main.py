@@ -35,9 +35,6 @@ from .webui.dashboard_api import BookDownloadDashboardAPI
 
 
 MASKED_VALUE = "********"
-DEFAULT_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|lolicon"
-LEGACY_DAILY_PUSH_TAG_REGEX = "blowjob|stockings|masturbation|lolicon"
-DEFAULT_TAG_FILTER_REGEX = "yaoi|tomgirl|futanari|guro|scat|vore|bestiality"
 HELP_TEXT = """本子搜索下载指令
 
 搜索（自动识别文字或消息/引用图片）：
@@ -103,17 +100,14 @@ class BookDownloadPlugin(Star):
         self.config.setdefault("daily_push_enabled", False)
         self.config.setdefault("daily_push_time", "12:05")
         self.config.setdefault("daily_push_source", "nhentai")
-        if str(self.config.get("daily_push_tag_regex", "")).strip().lower() == LEGACY_DAILY_PUSH_TAG_REGEX:
-            self.config["daily_push_tag_regex"] = DEFAULT_DAILY_PUSH_TAG_REGEX
-        self.config.setdefault("daily_push_tag_regex", DEFAULT_DAILY_PUSH_TAG_REGEX)
+        self.config.setdefault("daily_push_tag_regex", "")
         self.config.setdefault("daily_push_language", "chinese")
         self.config.setdefault("language_filter_enabled", False)
         self.config.setdefault("tag_filter_enabled", True)
-        self.config.setdefault("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)
+        self.config.setdefault("tag_filter_regex", "")
         self.config.setdefault("daily_push_group_ids", "")
         self.config.setdefault("daily_push_friend_ids", "")
         self.config.setdefault("daily_push_platform", "aiocqhttp")
-        self.config.setdefault("daily_push_target", "")
         self.service = BookSearchService(self.config)
         self.download_service = BookDownloadService(self.config)
         self.detail_service = GalleryDetailService(self.config)
@@ -159,7 +153,6 @@ class BookDownloadPlugin(Star):
             "daily_push_group_ids",
             "daily_push_friend_ids",
             "daily_push_platform",
-            "daily_push_target",
         ):
             if key in patch:
                 next_config[key] = bool(patch[key]) if key == "daily_push_enabled" and isinstance(patch[key], bool) else patch[key]
@@ -198,14 +191,12 @@ class BookDownloadPlugin(Star):
                 re.compile(language, re.IGNORECASE)
             except re.error as exc:
                 raise ValueError(f"daily_push_language 不是有效正则: {exc}") from exc
-        tag_filter_regex = str(next_config.get("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)).strip()
+        tag_filter_regex = str(next_config.get("tag_filter_regex", "")).strip()
         if tag_filter_regex:
             try:
                 re.compile(tag_filter_regex, re.IGNORECASE)
             except re.error as exc:
                 raise ValueError(f"tag_filter_regex 不是有效正则: {exc}") from exc
-        if str(next_config.get("daily_push_target", "")).strip() and len(str(next_config["daily_push_target"])) > 300:
-            raise ValueError("daily_push_target 过长。")
         for key in ("daily_push_group_ids", "daily_push_friend_ids"):
             target_ids = str(next_config.get(key, "")).strip()
             if target_ids and any(not item.strip().isdigit() for item in target_ids.split("|")):
@@ -303,18 +294,6 @@ class BookDownloadPlugin(Star):
             add(MessageType.GROUP_MESSAGE, self.config.get("daily_push_group_ids", ""))
             add(MessageType.FRIEND_MESSAGE, self.config.get("daily_push_friend_ids", ""))
 
-            # Keep accepting the old full-session setting for existing installs.
-            legacy = str(self.config.get("daily_push_target", "")).strip()
-            if legacy:
-                for raw in legacy.split("|"):
-                    try:
-                        session = MessageSession.from_str(raw.strip())
-                    except Exception:
-                        logger.warning("每日推送目标无效: %s", raw)
-                        continue
-                    if str(session) not in seen:
-                        seen.add(str(session))
-                        sessions.append(session)
             return sessions
         except Exception as exc:
             logger.warning("每日推送目标配置无效: %s", exc)
@@ -508,7 +487,7 @@ class BookDownloadPlugin(Star):
         """Exclude galleries whose tags match the configured regular expression."""
         if not self._config_bool("tag_filter_enabled", True):
             return results
-        pattern_text = str(self.config.get("tag_filter_regex", DEFAULT_TAG_FILTER_REGEX)).strip()
+        pattern_text = str(self.config.get("tag_filter_regex", "")).strip()
         if not pattern_text:
             return results
         try:

@@ -73,8 +73,8 @@
       <label>最大结果数 <input name="max_results" type="number" min="1" max="12"></label>
       <label><span>启用标签正则过滤</span><input name="tag_filter_enabled" type="checkbox"></label>
       <label>标签排除正则
-        <input name="tag_filter_regex" type="text" placeholder="yaoi|tomgirl|futanari|guro|scat|vore|bestiality">
-        <span class="hint">命中作品 Tags 即排除；搜索、每日推送和今日本子共用此规则。</span>
+        <input name="tag_filter_regex" type="text" placeholder="例如 tag1|tag2">
+        <span class="hint">命中作品 Tags 即排除；搜索、每日推送和今日本子共用此规则，留空表示不启用。</span>
       </label>
       <label>图片大小上限（MB） <input name="max_image_mb" type="number" min="1" max="20"></label>
       <label>默认下载发送方式
@@ -95,8 +95,8 @@
         <select name="daily_push_source"><option value="nhentai">NHentai</option><option value="ehentai">E-Hentai</option><option value="jmcomic">JM</option><option value="all">全部来源</option></select>
       </label>
       <label>标签正则
-        <input name="daily_push_tag_regex" type="text" placeholder="blowjob|stockings|lolicon">
-        <span class="hint">用 | 分隔候选标签，每天随机选择一个。</span>
+        <input name="daily_push_tag_regex" type="text" placeholder="例如 tag1|tag2">
+        <span class="hint">用 | 分隔候选标签，每天随机选择一个；留空则不限定标签。</span>
       </label>
       <label>Languages 筛选
         <input name="daily_push_language" type="text" placeholder="chinese">
