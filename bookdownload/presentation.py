@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import io
-import logging
 import os
 import tempfile
 from functools import lru_cache
@@ -11,11 +10,7 @@ from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse, urlsplit, urlunsplit
 
 import aiohttp
-
-try:
-    from astrbot.api import logger
-except ImportError:  # pragma: no cover - AstrBot supplies this at runtime
-    logger = logging.getLogger(__name__)
+from astrbot.api import logger
 
 from .models import SearchResult
 from .network import client_session
